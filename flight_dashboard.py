@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import snowflake.connector
 import pydeck as pdk
-import time
 
 st.set_page_config(page_title="Flight Tracker", layout="wide")
 
@@ -10,35 +9,39 @@ st.title("🛫 Real-Time Flight Tracker")
 
 sf = st.secrets["snowflake"]
 
-conn = snowflake.connector.connect(
-    user=sf.user,
-    password=sf.password,
-    account=sf.account,
-    warehouse=sf.warehouse,
-    role=sf.role,
-    database=sf.database,
-    schema=sf.schema
-)
-
-query = """
-SELECT
-  RECORD_CONTENT:icao24::string AS icao24,
-  RECORD_CONTENT:callsign::string AS callsign,
-  RECORD_CONTENT:origin_country::string AS origin_country,
-  RECORD_CONTENT:longitude::float AS lon,
-  RECORD_CONTENT:latitude::float AS lat,
-  RECORD_CONTENT:velocity::float AS velocity
-FROM kafka_flight
-WHERE RECORD_CONTENT:latitude IS NOT NULL AND RECORD_CONTENT:longitude IS NOT NULL
-LIMIT 200;
-"""
-
-df = pd.read_sql(query, conn)
-
 with st.sidebar:
+    refresh = st.button("🔄 Refresh Data")
     st.header("✈️ Filter Flights")
     min_velocity = st.slider("Min Speed (m/s)", 0, 300, 0)
     country = st.text_input("Origin Country (optional)")
+    
+if refresh or "df" not in st.session_state:
+    conn = snowflake.connector.connect(
+        user=sf.user,
+        password=sf.password,
+        account=sf.account,
+        warehouse=sf.warehouse,
+        role=sf.role,
+        database=sf.database,
+        schema=sf.schema
+    )
+
+    query = """
+    SELECT
+    RECORD_CONTENT:icao24::string AS ICAO24,
+    RECORD_CONTENT:callsign::string AS CALLSIGN,
+    RECORD_CONTENT:origin_country::string AS ORIGIN_COUNTRY,
+    RECORD_CONTENT:longitude::float AS LON,
+    RECORD_CONTENT:latitude::float AS LAT,
+    RECORD_CONTENT:velocity::float AS VELOCITY
+    FROM kafka_flight
+    WHERE RECORD_CONTENT:latitude IS NOT NULL AND RECORD_CONTENT:longitude IS NOT NULL
+    LIMIT 200;
+    """
+
+    st.session_state.df = pd.read_sql(query, conn)
+
+df = st.session_state.df.copy()
 
 df = df[df['VELOCITY'] >= min_velocity]
 if country:
