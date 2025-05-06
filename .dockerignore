@@ -1,0 +1,17 @@
+# flyctl launch added from .gitignore
+# Snowflake & Streamlit secrets
+**/.env
+**/.streamlit/secrets.toml
+
+# Kafka credentials
+**/client.properties
+
+# Python cache & virtualenvs
+**/__pycache__
+**/*.pyc
+**/*.pyo
+**/*.pyd
+**/.env
+**/.venv
+**/venv
+fly.toml
